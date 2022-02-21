@@ -32,7 +32,6 @@ namespace API
                     {
                         if (context.Request.RawUrl == "/api/bike")
                         {
-                            var bikeList = Data.bd.Bike.ToList();
                             string response = JsonSerializer.Serialize(Data.bd.Bike.ToList().ConvertAll(b => new ResponseBike(b)), options);
                             byte[] data = Encoding.UTF8.GetBytes(response);
                             context.Response.ContentType = "application/json;charset=utf-8";
@@ -42,13 +41,72 @@ namespace API
                                 stream.Write(data, 0, data.Length);
                             }
                         }
-                        else throw new Exception();
+                        else
+                        {
+                            if(context.Request.QueryString.Count == 1)
+                            {
+                                if(context.Request.QueryString.Keys[0] == "id")
+                                {
+                                    int id = Convert.ToInt32(context.Request.QueryString.Get(0));
+                                    context.Response.ContentType = "application/json;charset=utf-8";
+                                    var currentBike = Data.bd.Bike.FirstOrDefault(b => b.ID == id);
+                                    if(currentBike != null)
+                                    {
+                                        string response = JsonSerializer.Serialize<ResponseBike>(new ResponseBike(currentBike), options);
+                                        byte[] data = System.Text.Encoding.UTF8.GetBytes(response);
+                                        using(Stream stream = context.Response.OutputStream)
+                                        {
+                                            context.Response.StatusCode = 200;
+                                            stream.Write(data, 0, data.Length);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        throw new Exception();
+                                    }
+                                }
+                                if (context.Request.QueryString.Keys[0] == "search")
+                                {
+                                    string search = context.Request.QueryString.Get(0);
+                                    context.Response.ContentType = "application/json;charset=utf-8";
+                                    string response = JsonSerializer.Serialize<List<ResponseBike>>(Data.bd.Bike.Where(b => b.Title.ToLower().Contains(search.ToLower()) || b.Owner.ToLower().Contains(search.ToLower())).ToList().ConvertAll(b => new ResponseBike(b)), options);
+                                    byte[] data = System.Text.Encoding.UTF8.GetBytes(response);
+                                    using(Stream stream = context.Response.OutputStream)
+                                    {
+                                        context.Response.StatusCode = 200;
+                                        stream.Write(data, 0, data.Length);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if(context.Request.QueryString.Keys[0] == "datestart" && context.Request.QueryString.Keys[1] == "datestop")
+                                {
+                                    DateTime dateStart = Convert.ToDateTime(context.Request.QueryString.Get(0));
+                                    DateTime dateStop = Convert.ToDateTime(context.Request.QueryString.Get(0));
+                                    context.Response.ContentType = "application/json;charset=utf-8";
+                                    string response = JsonSerializer.Serialize<List<ResponseBike>>(Data.bd.Bike.Where(b => b.Date >= dateStart && b.Date <= dateStop).ToList().ConvertAll(b => new ResponseBike(b)), options);
+                                    byte[] data = System.Text.Encoding.UTF8.GetBytes(response);
+                                    using (Stream stream = context.Response.OutputStream)
+                                    {
+                                        context.Response.StatusCode = 200;
+                                        stream.Write(data, 0, data.Length);
+                                    }
+                                }
+                                else
+                                {
+                                    throw new Exception();
+                                }
+                            }
+                        }
+                        
                     }
                     catch
                     {
                         context.Response.StatusCode = 400;
                         context.Response.Close();
                     }
+                    
                 }
                 else if (context.Request.HttpMethod == "POST")
                 {
@@ -70,7 +128,7 @@ namespace API
                                 {
                                     Bike bikes = new Bike();
                                     bikes.ID = bike.ID;
-                                    bikes.Title = bike.Title;
+                                    bikes.Title = bike.Title; 
                                     bikes.Owner = bike.Owner;
                                     bikes.IDStatus = bike.IDStatus;
                                     bikes.IDType = bike.IDType;
@@ -95,6 +153,32 @@ namespace API
                     {
                         context.Response.StatusCode = 400;
                         context.Response.Close();
+                    }
+                }
+                else if(context.Request.HttpMethod == "PUT")
+                {
+                    try
+                    {
+                        if(context.Request.RawUrl.Contains("/api/bike/") && context.Request.QueryString.Count == 1)
+                        {
+                            if(context.Request.ContentType == "application/json")
+                            {
+                                int id = Convert.ToInt32(context.Request.QueryString.Get(0));
+                                string request = "";
+                                byte[] data = new byte[context.Request.ContentLength64];
+                                using(Stream stream = context.Request.InputStream)
+                                {
+                                    stream.Read(data, 0, data.Length);
+                                }
+                                request = System.Text.UTF8Encoding.UTF8.GetString(data);
+                                var currentBike = JsonSerializer.Deserialize<ResponseBike>(request);
+                                var currentBike = Data.bd.Bike.FirstOrDefault(b => b.ID == id);
+                                if(currentBike != null)
+                                {
+                                  
+                                }
+                            }
+                        }
                     }
                 }
                 else
